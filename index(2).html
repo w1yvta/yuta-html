@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>yuta</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600&family=Marcellus&family=EB+Garamond:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --void: #05070d;
+    --void-deep: #020306;
+    --moon: #dfe6f0;
+    --moon-glow: #a9c4e8;
+    --silver: #cdd6e2;
+    --silver-dim: #8f9bb0;
+    --steel: #1c2433;
+    --lilac: #7d8fc7;
+  }
+
+  *{ margin:0; padding:0; box-sizing:border-box; }
+
+  html,body{
+    height:100%;
+    background: radial-gradient(ellipse at 50% 20%, #0d1524 0%, var(--void) 55%, var(--void-deep) 100%);
+    color: var(--silver);
+    font-family: 'EB Garamond', serif;
+    overflow-x:hidden;
+  }
+
+  body{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    min-height:100vh;
+    position:relative;
+  }
+
+  body::before{
+    content:"";
+    position:fixed; inset:0;
+    background: radial-gradient(ellipse at 50% 35%, rgba(20,28,45,0) 0%, rgba(0,1,4,0.8) 85%);
+    pointer-events:none;
+    z-index:2;
+  }
+
+  body::after{
+    content:"";
+    position:fixed; inset:0;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+    pointer-events:none;
+    z-index:3;
+    opacity:0.6;
+    mix-blend-mode:overlay;
+  }
+
+  canvas#stars{
+    position:fixed; inset:0;
+    z-index:3;
+  }
+
+  .moon-halo{
+    position:fixed;
+    top: 8%;
+    left:50%;
+    transform: translateX(-50%);
+    width: 520px;
+    height: 520px;
+    border-radius:50%;
+    background: radial-gradient(circle, rgba(169,196,232,0.16) 0%, rgba(169,196,232,0.06) 40%, transparent 70%);
+    z-index:0;
+    pointer-events:none;
+  }
+
+  .card{
+    position:relative;
+    z-index:5;
+    width:min(90vw, 400px);
+    padding: 48px 36px 36px;
+    text-align:center;
+  }
+
+  .frame{
+    position:relative;
+    padding: 2px;
+    background: linear-gradient(180deg, var(--steel), rgba(28,36,51,0.15) 40%, var(--steel));
+    border: 1px solid rgba(125,143,199,0.28);
+  }
+
+  .frame::before, .frame::after{
+    content:"";
+    position:absolute;
+    width:10px; height:10px;
+    border: 1px solid var(--moon-glow);
+    opacity:0.6;
+  }
+  .frame::before{ top:-1px; left:-1px; border-right:none; border-bottom:none; }
+  .frame::after{ bottom:-1px; right:-1px; border-left:none; border-top:none; }
+
+  .inner{
+    background: linear-gradient(180deg, rgba(9,13,22,0.92), rgba(4,6,11,0.96));
+    padding: 40px 28px 32px;
+  }
+
+  .avatar-wrap{
+    position:relative;
+    width:112px; height:112px;
+    margin: 0 auto 22px;
+  }
+
+  .avatar-ring{
+    position:absolute; inset:-6px;
+    border-radius:50%;
+    background: conic-gradient(from 0deg, var(--moon-glow), transparent 30%, var(--lilac), transparent 65%, var(--moon-glow));
+    animation: spin 10s linear infinite;
+    filter: blur(0.5px);
+  }
+
+  .avatar-ring::after{
+    content:"";
+    position:absolute; inset:3px;
+    border-radius:50%;
+    background: var(--void);
+  }
+
+  .avatar{
+    position:relative;
+    width:112px; height:112px;
+    border-radius:50%;
+    background: radial-gradient(circle at 35% 30%, #232c40, #0a0d15 70%);
+    display:flex; align-items:center; justify-content:center;
+    font-family:'Cinzel', serif;
+    font-size:13px;
+    letter-spacing:2px;
+    color: var(--silver-dim);
+    box-shadow: 0 0 24px rgba(169,196,232,0.3), inset 0 0 18px rgba(0,0,0,0.7);
+    overflow:hidden;
+  }
+  .avatar img{ display:block; }
+
+  @keyframes spin{ to{ transform: rotate(360deg); } }
+
+  .name{
+    font-family:'Marcellus', serif;
+    font-size: 2.9rem;
+    letter-spacing: 3px;
+    line-height:1;
+    color: var(--moon);
+    text-shadow: 0 0 18px rgba(169,196,232,0.6), 0 0 42px rgba(125,143,199,0.3);
+    margin-bottom: 6px;
+    animation: glow 5s ease-in-out infinite;
+  }
+
+  @keyframes glow{
+    0%,100%{ opacity:1; text-shadow: 0 0 18px rgba(169,196,232,0.6), 0 0 42px rgba(125,143,199,0.3); }
+    50%{ opacity:0.96; text-shadow: 0 0 12px rgba(169,196,232,0.4), 0 0 30px rgba(125,143,199,0.18); }
+  }
+
+  .eyebrow{
+    font-family:'Cinzel', serif;
+    font-size: 0.62rem;
+    letter-spacing: 4px;
+    color: var(--lilac);
+    text-transform: uppercase;
+    margin-bottom: 18px;
+    opacity:0.9;
+  }
+
+  .divider{
+    width: 46px;
+    height: 1px;
+    margin: 0 auto 18px;
+    background: linear-gradient(90deg, transparent, var(--moon-glow), transparent);
+  }
+
+  .bio{
+    font-size: 1.02rem;
+    font-style: italic;
+    color: var(--silver-dim);
+    line-height: 1.6;
+    margin-bottom: 28px;
+  }
+
+  .links{
+    display:flex;
+    flex-direction:column;
+    gap: 12px;
+  }
+
+  .link-btn{
+    position:relative;
+    display:flex;
+    align-items:center;
+    gap:12px;
+    padding: 13px 18px;
+    background: rgba(14,18,28,0.7);
+    border: 1px solid rgba(125,143,199,0.3);
+    color: var(--silver);
+    text-decoration:none;
+    font-family:'Cinzel', serif;
+    font-size: 0.78rem;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    cursor:pointer;
+    transition: border-color 0.35s ease, background 0.35s ease, transform 0.2s ease, box-shadow .35s ease;
+    overflow:hidden;
+  }
+
+  .link-btn::before{
+    content:"";
+    position:absolute; inset:0;
+    background: linear-gradient(90deg, rgba(169,196,232,0.16), transparent 60%);
+    transform: translateX(-100%);
+    transition: transform 0.45s ease;
+  }
+
+  .link-btn:hover{
+    border-color: var(--moon-glow);
+    background: rgba(18,24,38,0.85);
+    box-shadow: 0 0 20px rgba(169,196,232,0.22);
+    transform: translateY(-1px);
+  }
+
+  .link-btn:hover::before{ transform: translateX(0); }
+
+  .link-icon{
+    width:18px; height:18px;
+    flex-shrink:0;
+    opacity:0.9;
+  }
+
+  .sound-toggle{
+    position: fixed;
+    bottom: 22px;
+    right: 22px;
+    z-index: 10;
+    display:flex;
+    align-items:center;
+    gap:9px;
+    padding: 9px 14px;
+    background: rgba(5,7,13,0.75);
+    border: 1px solid rgba(125,143,199,0.35);
+    color: var(--silver-dim);
+    font-family:'Cinzel', serif;
+    font-size: 0.62rem;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    cursor:pointer;
+    backdrop-filter: blur(4px);
+  }
+  .sound-toggle:hover{ color: var(--moon); border-color: var(--moon-glow); }
+  .bars{ display:flex; align-items:flex-end; gap:2px; height:12px; }
+  .bars span{ width:2px; background: var(--moon-glow); animation: bar 1s ease-in-out infinite; }
+  .bars span:nth-child(1){ height:40%; animation-delay:0s; }
+  .bars span:nth-child(2){ height:100%; animation-delay:.15s; }
+  .bars span:nth-child(3){ height:65%; animation-delay:.3s; }
+  .sound-toggle.paused .bars span{ animation-play-state: paused; height:20% !important; }
+  @keyframes bar{ 0%,100%{ transform: scaleY(0.4); } 50%{ transform: scaleY(1); } }
+
+  .footnote{
+    margin-top: 20px;
+    font-size: 0.6rem;
+    letter-spacing: 2px;
+    text-transform:uppercase;
+    color: var(--steel);
+  }
+
+  @media (max-width: 420px){
+    .name{ font-size: 2.3rem; }
+    .card{ padding: 30px 8px; }
+    .moon-halo{ width: 340px; height: 340px; }
+  }
+
+  @media (prefers-reduced-motion: reduce){
+    *{ animation: none !important; transition: none !important; }
+  }
+</style>
+</head>
+<body>
+
+<canvas id="stars"></canvas>
+<div class="moon-halo"></div>
+
+<div class="card">
+  <div class="frame">
+    <div class="inner">
+
+      <div class="avatar-wrap">
+        <div class="avatar-ring"></div>
+        <div class="avatar"><img src="pp.png" alt="yuta" style="width:100%;height:100%;object-fit:cover;border-radius:50%;"></div>
+      </div>
+      <div class="eyebrow">welcome to the orbit of</div>
+      <div class="name">Yuta</div>
+      <div class="divider"></div>
+
+      <p class="bio" id="bio-text">Captain Trickster'Div5 &mdash;</p>
+
+      <div class="links">
+        <a class="link-btn" href="https://www.tiktok.com/@fckyutaa" target="_blank" rel="noopener">
+          <svg class="link-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M16.6 5.82s.51.5 0 0A4.278 4.278 0 0 1 15.54 3h-3.09v12.4a2.592 2.592 0 0 1-2.59 2.5c-1.42 0-2.6-1.16-2.6-2.6 0-1.72 1.66-3.01 3.37-2.48V9.66c-3.45-.46-6.47 2.22-6.47 5.64 0 3.33 2.76 5.7 5.69 5.7 3.14 0 5.69-2.55 5.69-5.7V9.01a7.35 7.35 0 0 0 4.3 1.38V7.3s-1.88.09-3.24-1.48z"/></svg>
+          @fckyutaa
+        </a>
+
+        <a class="link-btn" id="discord-btn" href="https://discord.com/users/1387045730283159733" target="_blank" rel="noopener">
+          <svg class="link-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M20.317 4.37a19.79 19.79 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.865-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.058a.082.082 0 0 0 .031.056 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028 14.09 14.09 0 0 0 1.226-1.994.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128c.126-.094.252-.192.372-.291a.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.099.246.198.373.292a.077.077 0 0 1-.006.127 12.3 12.3 0 0 1-1.873.892.076.076 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.84 19.84 0 0 0 6.001-3.03.077.077 0 0 0 .032-.055c.5-5.177-.838-9.673-3.549-13.66a.061.061 0 0 0-.031-.028zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.418 2.157-2.418 1.21 0 2.176 1.094 2.157 2.418 0 1.334-.955 2.419-2.157 2.419zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.418 2.157-2.418 1.21 0 2.176 1.094 2.157 2.418 0 1.334-.946 2.419-2.157 2.419z"/></svg>
+          fckyuta
+        </a>
+      </div>
+
+      <p class="footnote">enter the discord server to enter the trickster crew
+    </div>
+  </div>
+</div>
+
+<div class="sound-toggle" id="sound-toggle">
+  <div class="bars"><span></span><span></span><span></span></div>
+  <span id="sound-label">now playing</span>
+</div>
+
+<audio id="bg-audio" loop preload="none">
+  <source src="YTDown.com_YouTube_Bruno-Mars-Risk-It-All-Lyrics_Media_hXAfayCZKSs_001_1080p.mp4" type=""audio/mpeg">
+</audio>
+
+<script>
+  // ---- Starfield / moon dust particle background ----
+  const canvas = document.getElementById('stars');
+  const ctx = canvas.getContext('2d');
+  let w,h;
+  function resize(){ w = canvas.width = window.innerWidth; h = canvas.height = window.innerHeight; }
+  resize();
+  window.addEventListener('resize', resize);
+
+  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  const STAR_COUNT = reduceMotion ? 0 : 180;
+  const stars = Array.from({length: STAR_COUNT}, () => ({
+    x: Math.random()*w,
+    y: Math.random()*h,
+    r: Math.random()*2 + 0.6,
+    twinkle: Math.random()*Math.PI*2,
+    speed: 0.015 + Math.random()*0.03
+  }));
+
+  const DUST_COUNT = reduceMotion ? 0 : 90;
+  const dust = Array.from({length: DUST_COUNT}, () => spawnDust());
+
+  function spawnDust(y){
+    return {
+      x: Math.random()*w,
+      y: y ?? Math.random()*h,
+      r: 1.2 + Math.random()*2.6,
+      speed: 0.15 + Math.random()*0.35,
+      drift: (Math.random()-0.5)*0.4,
+      flicker: Math.random()*Math.PI*2
+    };
+  }
+
+  function tick(){
+    ctx.clearRect(0,0,w,h);
+
+    for(const s of stars){
+      s.twinkle += s.speed;
+      const alpha = 0.5 + 0.5*Math.abs(Math.sin(s.twinkle));
+      ctx.beginPath();
+      ctx.arc(s.x, s.y, s.r, 0, Math.PI*2);
+      ctx.fillStyle = `rgba(255,255,255,${alpha})`;
+      ctx.shadowBlur = 4;
+      ctx.shadowColor = 'rgba(255,255,255,0.9)';
+      ctx.fill();
+    }
+
+    for(const p of dust){
+      p.y -= p.speed;
+      p.x += p.drift + Math.sin(p.flicker)*0.2;
+      p.flicker += 0.02;
+      if(p.y < -10){ Object.assign(p, spawnDust(h+10)); }
+
+      const alpha = 0.4 + 0.5*Math.abs(Math.sin(p.flicker));
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.r, 0, Math.PI*2);
+      ctx.fillStyle = `rgba(169,196,232,${alpha})`;
+      ctx.shadowBlur = 10;
+      ctx.shadowColor = 'rgba(169,196,232,1)';
+      ctx.fill();
+    }
+
+    requestAnimationFrame(tick);
+  }
+  tick();
+
+  // ---- Background audio toggle ----
+  const audio = document.getElementById('bg-audio');
+  const toggle = document.getElementById('sound-toggle');
+  const label = document.getElementById('sound-label');
+  let started = false;
+
+  function tryPlay(){
+    audio.volume = 0.5;
+    audio.play().then(()=>{
+      started = true;
+      toggle.classList.remove('paused');
+      label.textContent = 'now playing';
+    }).catch(()=>{
+      toggle.classList.add('paused');
+      label.textContent = 'tap for sound';
+    });
+  }
+
+  window.addEventListener('pointerdown', function firstInteract(){
+    if(!started) tryPlay();
+    window.removeEventListener('pointerdown', firstInteract);
+  }, { once:true });
+
+  toggle.addEventListener('click', () => {
+    if(audio.paused){
+      audio.play();
+      toggle.classList.remove('paused');
+      label.textContent = 'now playing';
+    } else {
+      audio.pause();
+      toggle.classList.add('paused');
+      label.textContent = 'paused';
+    }
+  });
+
+  audio.addEventListener('error', () => {
+    label.textContent = 'add music file';
+    toggle.style.opacity = '0.6';
+  });
+</script>
+
+</body>
+</html>
