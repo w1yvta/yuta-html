@@ -1,8 +1,3 @@
--- Evade: AFK Farm + Auto Collect Wisp/Ticket (Halloween 2026)
--- UI putih: 2 toggle saja. Tanpa keyword, tanpa scan manual.
--- Deteksi: objek kecil yang bisa disentuh/di-prompt yang MUNCUL setelah script jalan
--- (jalankan sebelum round / saat lobby). Nama yang terdeteksi tampil di log.
-
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local lp = Players.LocalPlayer
@@ -13,7 +8,7 @@ if env.__EvadeFarm then
 end
 
 local CONFIG = {
-	SafeHeight = 500,
+	SafeHeight = 750,
 	PlatformSize = Vector3.new(30, 2, 30),
 	Names = {"wisp"}, -- tebakan nama (tanpa UI); hanya objek yang muncul setelah script jalan
 	CollectDelay = 0.70,
