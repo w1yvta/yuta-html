@@ -13,12 +13,12 @@ if env.__EvadeFarm then
 end
 
 local CONFIG = {
-	SafeHeight = 650,
+	SafeHeight = 500,
 	PlatformSize = Vector3.new(30, 2, 30),
 	Names = {"wisp"}, -- tebakan nama (tanpa UI); hanya objek yang muncul setelah script jalan
-	CollectDelay = 0.35,
+	CollectDelay = 0.70,
 	Interval = 0.3,
-	StableTime = 1.5, -- objek harus diam & bertahan segini lama sebelum dianggap ticket (buang efek sesaat)
+	StableTime = 5.0, -- objek harus diam & bertahan segini lama sebelum dianggap ticket (buang efek sesaat)
 }
 
 local State = { Afk = true, Collect = true }
