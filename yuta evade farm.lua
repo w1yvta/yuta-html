@@ -1,5 +1,43 @@
+-- ==================================================
+-- [SECURITY] GAME GUARD - EXCLUSIVE FOR EVADE
+-- ==================================================
+local StarterGui = game:GetService("StarterGui")
+local isEvade = false
+
+-- 1. Cek berdasarkan Nama Game (Fallback)
+if string.find(string.lower(game.Name), "evade") then
+    isEvade = true
+end
+
+-- 2. Cek berdasarkan PlaceId (ID Map Evade)
+-- Jika Evade update dan ganti map, tambahkan ID barunya di bawah ini
+local ALLOWED_PLACE_IDS = {
+    13431554650, -- Evade (Main Lobby / Game)
+}
+
+for _, id in ipairs(ALLOWED_PLACE_IDS) do
+    if game.PlaceId == id then
+        isEvade = true
+        break
+    end
+end
+
+-- 3. Jika bukan Evade, matikan script secara total
+if not isEvade then
+    pcall(function()
+        StarterGui:SetCore("SendNotification", {
+            Title = "Security System",
+            Text = "Script ini hanya berfungsi di Evade!",
+            Duration = 5
+        })
+    end)
+    return -- HENTIKAN SCRIPT (UI tidak akan muncul)
+end
+-- ==================================================
+
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
+local TweenService = game:GetService("TweenService")
 local lp = Players.LocalPlayer
 
 local env = (getgenv and getgenv()) or _G
@@ -10,26 +48,24 @@ end
 local CONFIG = {
 	SafeHeight = 750,
 	PlatformSize = Vector3.new(30, 2, 30),
-	Names = {"wisp"}, -- tebakan nama (tanpa UI); hanya objek yang muncul setelah script jalan
+	Names = {"wisp"}, 
 	CollectDelay = 0.70,
 	Interval = 0.3,
-	StableTime = 5.0, -- objek harus diam & bertahan segini lama sebelum dianggap ticket (buang efek sesaat)
+	StableTime = 5.0, 
 }
 
 local State = { Afk = true, Collect = true }
 local running = true
 local connections = {}
-local named = {}                       -- kandidat dari tebakan nama
+local named = {}                       
 local autoSet, autoStats, autoBlack, autoSeen = {}, {}, {}, {}
 local lastAuto
 local platform, safeCFrame, originCFrame
 local needSetup = true
-local guiRoot
-local leaveAfk
-local afkBtn
-local afkPaused = false
+local guiRoot, mainFrame, bubbleFrame
+local leaveAfk, afkBtn, afkPaused = false
 
--- ===================== UI =====================
+-- ===================== MODERN UI =====================
 local function make(class, props, parent)
 	local o = Instance.new(class)
 	for k, v in pairs(props) do o[k] = v end
@@ -69,33 +105,54 @@ end
 
 local function buildUI()
 	guiRoot = make("ScreenGui", {
-		Name = "EvadeFarmUI", ResetOnSpawn = false, ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
+		Name = "SystemCore", ResetOnSpawn = false, ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
 	}, getGuiParent())
 
-	local frame = make("Frame", {
-		Size = UDim2.new(0, 250, 0, 284), Position = UDim2.new(0, 20, 0.3, 0),
-		BackgroundColor3 = Color3.new(1, 1, 1), BorderSizePixel = 0,
+	-- MAIN FRAME (Dark Theme)
+	mainFrame = make("Frame", {
+		Size = UDim2.new(0, 260, 0, 300), Position = UDim2.new(0, 20, 0.3, 0),
+		BackgroundColor3 = Color3.fromRGB(20, 20, 25), BorderSizePixel = 0,
 	}, guiRoot)
-	make("UICorner", { CornerRadius = UDim.new(0, 8) }, frame)
-	make("UIStroke", { Color = Color3.fromRGB(200, 200, 200), Thickness = 1 }, frame)
+	make("UICorner", { CornerRadius = UDim.new(0, 8) }, mainFrame)
+	make("UIStroke", { Color = Color3.fromRGB(60, 60, 70), Thickness = 1.5 }, mainFrame)
+
+	-- HEADER
+	local header = make("Frame", {
+		Size = UDim2.new(1, 0, 0, 35), BackgroundColor3 = Color3.fromRGB(30, 30, 38),
+		BorderSizePixel = 0,
+	}, mainFrame)
+	make("UICorner", { CornerRadius = UDim.new(0, 8) }, header)
+	-- Tutup sudut bawah header yang ikut rounded
+	make("Frame", { Size = UDim2.new(1, 0, 0.5, 0), Position = UDim2.new(0, 0, 0.5, 0), BackgroundColor3 = Color3.fromRGB(30, 30, 38), BorderSizePixel = 0 }, header)
 
 	local title = make("TextLabel", {
-		Size = UDim2.new(1, 0, 0, 32), BackgroundColor3 = Color3.fromRGB(245, 245, 245),
-		BorderSizePixel = 0, Text = "Yuta Farm", Font = Enum.Font.GothamBold,
-		TextSize = 14, TextColor3 = Color3.fromRGB(30, 30, 30),
-	}, frame)
-	make("UICorner", { CornerRadius = UDim.new(0, 8) }, title)
+		Size = UDim2.new(1, -60, 1, 0), BackgroundTransparency = 1, Text = "CORE SYSTEM",
+		Font = Enum.Font.GothamBold, TextSize = 13, TextColor3 = Color3.fromRGB(200, 200, 200),
+		TextXAlignment = Enum.TextXAlignment.Left, Position = UDim2.new(0, 12, 0, 0)
+	}, header)
 
+	-- MINIMIZE BUTTON
+	local minBtn = make("TextButton", {
+		Size = UDim2.new(0, 30, 0, 35), Position = UDim2.new(1, -35, 0, 0),
+		BackgroundTransparency = 1, Text = "-", Font = Enum.Font.GothamBold,
+		TextSize = 18, TextColor3 = Color3.fromRGB(150, 150, 150),
+	}, header)
+	minBtn.MouseButton1Click:Connect(function()
+		mainFrame.Visible = false
+		bubbleFrame.Visible = true
+	end)
+
+	-- DRAG LOGIC
 	local dragging, dragStart, startPos
-	table.insert(connections, title.InputBegan:Connect(function(i)
+	table.insert(connections, header.InputBegan:Connect(function(i)
 		if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then
-			dragging, dragStart, startPos = true, i.Position, frame.Position
+			dragging, dragStart, startPos = true, i.Position, mainFrame.Position
 		end
 	end))
 	table.insert(connections, UserInputService.InputChanged:Connect(function(i)
 		if dragging and (i.UserInputType == Enum.UserInputType.MouseMovement or i.UserInputType == Enum.UserInputType.Touch) then
 			local d = i.Position - dragStart
-			frame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + d.X, startPos.Y.Scale, startPos.Y.Offset + d.Y)
+			mainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + d.X, startPos.Y.Scale, startPos.Y.Offset + d.Y)
 		end
 	end))
 	table.insert(connections, UserInputService.InputEnded:Connect(function(i)
@@ -104,16 +161,21 @@ local function buildUI()
 		end
 	end))
 
-	local function toggle(text, y, key, onChange)
+	-- TOGGLE BUTTONS
+	local function createToggle(text, y, key, onChange)
 		local btn = make("TextButton", {
-			Size = UDim2.new(1, -20, 0, 32), Position = UDim2.new(0, 10, 0, y),
-			BorderSizePixel = 0, Font = Enum.Font.Gotham, TextSize = 13,
-			TextColor3 = Color3.new(1, 1, 1),
-		}, frame)
+			Size = UDim2.new(1, -20, 0, 34), Position = UDim2.new(0, 10, 0, y),
+			BorderSizePixel = 0, Font = Enum.Font.GothamSemibold, TextSize = 12,
+			TextColor3 = Color3.new(1, 1, 1), AutoButtonColor = false,
+		}, mainFrame)
 		make("UICorner", { CornerRadius = UDim.new(0, 6) }, btn)
+		local stroke = make("UIStroke", { Color = Color3.fromRGB(100, 100, 100), Thickness = 1 }, btn)
+		
 		local function refresh()
 			btn.Text = text .. ": " .. (State[key] and "ON" or "OFF")
-			btn.BackgroundColor3 = State[key] and Color3.fromRGB(60, 170, 90) or Color3.fromRGB(150, 150, 150)
+			btn.BackgroundColor3 = State[key] and Color3.fromRGB(45, 45, 55) or Color3.fromRGB(30, 30, 35)
+			btn.TextColor3 = State[key] and Color3.fromRGB(0, 255, 150) or Color3.fromRGB(120, 120, 120)
+			stroke.Color = State[key] and Color3.fromRGB(0, 255, 150) or Color3.fromRGB(60, 60, 70)
 		end
 		refresh()
 		btn.MouseButton1Click:Connect(function()
@@ -124,45 +186,80 @@ local function buildUI()
 		return btn
 	end
 
-	afkBtn = toggle("AFK Farm", 42, "Afk", function(on)
+	afkBtn = createToggle("Auto AFK", 45, "Afk", function(on)
 		needSetup = true
 		if not on and leaveAfk then leaveAfk() end
 	end)
-	toggle("Auto Collect Wisp/Ticket", 82, "Collect")
+	createToggle("Auto Collect Item", 85, "Collect")
 
+	-- LOG BOX
 	logScroll = make("ScrollingFrame", {
-		Size = UDim2.new(1, -20, 0, 80), Position = UDim2.new(0, 10, 0, 124),
-		BackgroundColor3 = Color3.fromRGB(248, 248, 248), BorderSizePixel = 0,
-		ScrollBarThickness = 4, CanvasSize = UDim2.new(0, 0, 0, 0),
+		Size = UDim2.new(1, -20, 0, 90), Position = UDim2.new(0, 10, 0, 125),
+		BackgroundColor3 = Color3.fromRGB(15, 15, 18), BorderSizePixel = 0,
+		ScrollBarThickness = 3, CanvasSize = UDim2.new(0, 0, 0, 0),
 		AutomaticCanvasSize = Enum.AutomaticSize.Y,
-	}, frame)
+	}, mainFrame)
+	make("UICorner", { CornerRadius = UDim.new(0, 6) }, logScroll)
+	make("UIStroke", { Color = Color3.fromRGB(50, 50, 60), Thickness = 1 }, logScroll)
+	
 	logLabel = make("TextLabel", {
 		Size = UDim2.new(1, -6, 0, 0), AutomaticSize = Enum.AutomaticSize.Y,
 		BackgroundTransparency = 1, Text = "", Font = Enum.Font.Code, TextSize = 10,
 		TextXAlignment = Enum.TextXAlignment.Left, TextYAlignment = Enum.TextYAlignment.Top,
-		TextWrapped = true, TextColor3 = Color3.fromRGB(50, 50, 50),
+		TextWrapped = true, TextColor3 = Color3.fromRGB(180, 180, 180), Position = UDim2.new(0, 4, 0, 4)
 	}, logScroll)
 
-	local near = make("TextButton", {
-		Size = UDim2.new(1, -20, 0, 28), Position = UDim2.new(0, 10, 0, 210),
-		BackgroundColor3 = Color3.fromRGB(70, 120, 200), BorderSizePixel = 0,
-		Text = "Scan sekitar (berdiri dekat ticket)", Font = Enum.Font.Gotham, TextSize = 12,
-		TextColor3 = Color3.new(1, 1, 1),
-	}, frame)
-	make("UICorner", { CornerRadius = UDim.new(0, 6) }, near)
-	near.MouseButton1Click:Connect(function() pcall(env.__EvadeFarm_near) end)
+	-- SCAN BUTTON
+	local nearBtn = make("TextButton", {
+		Size = UDim2.new(1, -20, 0, 30), Position = UDim2.new(0, 10, 0, 225),
+		BackgroundColor3 = Color3.fromRGB(40, 80, 150), BorderSizePixel = 0,
+		Text = "Scan Area", Font = Enum.Font.GothamSemibold, TextSize = 12,
+		TextColor3 = Color3.new(1, 1, 1), AutoButtonColor = false
+	}, mainFrame)
+	make("UICorner", { CornerRadius = UDim.new(0, 6) }, nearBtn)
+	nearBtn.MouseButton1Click:Connect(function() pcall(env.__EvadeFarm_near) end)
 
-	local close = make("TextButton", {
-		Size = UDim2.new(1, -20, 0, 30), Position = UDim2.new(0, 10, 0, 244),
-		BackgroundColor3 = Color3.fromRGB(200, 70, 70), BorderSizePixel = 0,
-		Text = "Tutup & Stop", Font = Enum.Font.Gotham, TextSize = 13,
-		TextColor3 = Color3.new(1, 1, 1),
-	}, frame)
-	make("UICorner", { CornerRadius = UDim.new(0, 6) }, close)
-	close.MouseButton1Click:Connect(function() env.__EvadeFarm.Stop() end)
+	-- CLOSE BUTTON
+	local closeBtn = make("TextButton", {
+		Size = UDim2.new(1, -20, 0, 30), Position = UDim2.new(0, 10, 0, 260),
+		BackgroundColor3 = Color3.fromRGB(150, 40, 40), BorderSizePixel = 0,
+		Text = "Terminate Script", Font = Enum.Font.GothamSemibold, TextSize = 12,
+		TextColor3 = Color3.new(1, 1, 1), AutoButtonColor = false
+	}, mainFrame)
+	make("UICorner", { CornerRadius = UDim.new(0, 6) }, closeBtn)
+	closeBtn.MouseButton1Click:Connect(function() env.__EvadeFarm.Stop() end)
+
+	-- BUBBLE (MINIMIZED STATE)
+	bubbleFrame = make("TextButton", {
+		Size = UDim2.new(0, 50, 0, 50), Position = UDim2.new(0, 20, 0.3, 0),
+		BackgroundColor3 = Color3.fromRGB(30, 30, 38), BorderSizePixel = 0,
+		Text = "SYS", Font = Enum.Font.GothamBold, TextSize = 12,
+		TextColor3 = Color3.fromRGB(0, 255, 150), Visible = false, AutoButtonColor = false
+	}, guiRoot)
+	make("UICorner", { CornerRadius = UDim.new(0, 25) }, bubbleFrame)
+	make("UIStroke", { Color = Color3.fromRGB(0, 255, 150), Thickness = 1.5 }, bubbleFrame)
+	
+	bubbleFrame.MouseButton1Click:Connect(function()
+		bubbleFrame.Visible = false
+		mainFrame.Visible = true
+	end)
 end
 
--- ===================== Helper =====================
+-- ===================== HOTKEY LOGIC (Right Ctrl) =====================
+table.insert(connections, UserInputService.InputBegan:Connect(function(input, gameProcessed)
+	if gameProcessed then return end
+	if input.KeyCode == Enum.KeyCode.RightControl then
+		if mainFrame.Visible then
+			mainFrame.Visible = false
+			bubbleFrame.Visible = false
+		else
+			mainFrame.Visible = true
+			bubbleFrame.Visible = false
+		end
+	end
+end))
+
+-- ===================== CORE LOGIC =====================
 local function getRoot()
 	local char = lp.Character
 	if not char then return nil end
@@ -200,8 +297,6 @@ local function tp(root, cf)
 	root.CFrame = cf
 end
 
--- Scan sekitar: daftar objek kecil dalam radius 30 stud yang punya partikel/cahaya/sentuh/prompt/gui.
--- Berdiri dekat ticket lalu tekan tombolnya; hasilnya = nama & path ticket yang sebenarnya.
 env.__EvadeFarm_near = function()
 	local root = getRoot()
 	if not root then log("karakter belum siap"); return end
@@ -231,12 +326,10 @@ env.__EvadeFarm_near = function()
 		log(string.format("%.0fst [%s]", e.dist, e.tags), e.part:GetFullName())
 	end
 	if #list == 0 then
-		log("tidak ada objek berpartikel/cahaya/sentuh. Ticket mungkin tidak ada di workspace.")
+		log("tidak ada objek berpartikel/cahaya/sentuh.")
 	end
 end
 
--- ===================== Deteksi =====================
--- (1) tebakan nama
 local function nameMatches(s)
 	local lower = string.lower(s)
 	for _, k in ipairs(CONFIG.Names) do
@@ -262,11 +355,7 @@ local function considerNamed(inst)
 	end
 end
 
--- (2) auto-detect: objek kecil yang bisa disentuh/di-prompt dan muncul setelah script jalan
--- Deteksi "burst": saat map di-load, ratusan objek sentuh muncul sekaligus -> diabaikan.
--- Wisp muncul satu-satu selama round, jadi lolos.
 local recentAdds, burstUntil = {}, 0
--- Petunjuk ticket: bisa disentuh (touch/prompt) ATAU bercahaya (partikel/lampu, seperti di screenshot).
 local function isHint(d)
 	return d:IsA("TouchTransmitter") or d:IsA("ProximityPrompt")
 		or d:IsA("ParticleEmitter") or d:IsA("PointLight")
@@ -290,7 +379,7 @@ local function considerAuto(d)
 	local owner = d.Parent
 	if not owner or not owner:IsA("BasePart") then return end
 	if isExcluded(owner) or inAnyCharacter(owner) then return end
-	if owner.CanCollide then return end          -- pickup umumnya tidak solid
+	if owner.CanCollide then return end          
 	if owner.Size.Magnitude > 10 then return end
 	local target = owner
 	local m = owner:FindFirstAncestorOfClass("Model")
@@ -303,7 +392,6 @@ local function considerAuto(d)
 	local part = resolvePart(target)
 	if not part then return end
 	local p0 = part.Position
-	-- ticket asli diam di tempat dan bertahan; efek sesaat (ledakan, debu, bot) tidak lolos
 	task.delay(CONFIG.StableTime, function()
 		if not running or not target.Parent or not part.Parent then return end
 		if (part.Position - p0).Magnitude > 1 then return end
@@ -316,7 +404,6 @@ local function considerAuto(d)
 	end)
 end
 
--- ===================== Platform AFK =====================
 local function buildPlatform(root)
 	if platform then platform:Destroy() end
 	originCFrame = root.CFrame
@@ -335,7 +422,6 @@ leaveAfk = function()
 	safeCFrame = nil
 end
 
--- ===================== Collect =====================
 local function touchAll(root, inst)
 	local parts = {}
 	if inst:IsA("BasePart") then
@@ -363,14 +449,13 @@ local function touchAll(root, inst)
 	end
 end
 
--- set: tabel kandidat; verify: true = cek apakah objek hilang (untuk auto-detect)
 local function collectSet(set, verify)
 	local did = false
 	local trips = 0
 	for inst in pairs(set) do
 		if not running or not State.Collect then break end
 		trips += 1
-		if verify and trips > 3 then break end -- batasi teleport per siklus
+		if verify and trips > 3 then break end 
 		local r = getRoot()
 		if not r then break end
 		local part = resolvePart(inst)
@@ -403,15 +488,14 @@ local function collectSet(set, verify)
 	return did
 end
 
--- AFK otomatis "mati" (pause) saat ada ticket diambil, lalu nyala lagi setelah selesai
 local function setAfkPaused(p)
 	afkPaused = p
 	if afkBtn then
-		afkBtn.Text = p and "AFK Farm: PAUSE (ambil ticket)" or ("AFK Farm: " .. (State.Afk and "ON" or "OFF"))
+		afkBtn.Text = p and "Auto AFK: PAUSE" or ("Auto AFK: " .. (State.Afk and "ON" or "OFF"))
 	end
 end
 
--- ===================== Start =====================
+-- ===================== START & LOOP =====================
 buildUI()
 
 table.insert(connections, workspace.DescendantAdded:Connect(function(d)
@@ -425,7 +509,6 @@ table.insert(connections, workspace.DescendantRemoving:Connect(function(d)
 end))
 table.insert(connections, lp.CharacterAdded:Connect(function()
 	needSetup = true
-	-- mati tepat setelah teleport ke objek auto-detect -> objek itu berbahaya, jangan dipakai lagi
 	if lastAuto and os.clock() - lastAuto.t < 6 then
 		autoBlack[lastAuto.name] = true
 		table.clear(autoSet)
@@ -435,40 +518,37 @@ table.insert(connections, lp.CharacterAdded:Connect(function()
 end))
 
 local function step()
-		local root = getRoot()
-		if root then
-			-- fitur AFK (terpisah)
-			if State.Afk then
-				if needSetup then
-					needSetup = false
-					pcall(buildPlatform, root)
-					task.wait(0.2)
-					if safeCFrame then pcall(tp, root, safeCFrame) end
-				end
-			else
+	local root = getRoot()
+	if root then
+		if State.Afk then
+			if needSetup then
 				needSetup = false
+				pcall(buildPlatform, root)
+				task.wait(0.2)
+				if safeCFrame then pcall(tp, root, safeCFrame) end
 			end
+		else
+			needSetup = false
+		end
 
-			-- fitur Auto Collect (terpisah)
-			if State.Collect then
-				local home = (State.Afk and safeCFrame) or root.CFrame
-				local hasWork = next(named) ~= nil or next(autoSet) ~= nil
-				if hasWork and State.Afk then setAfkPaused(true) end
-				local did = collectSet(named, false)
-				if not did then did = collectSet(autoSet, true) end
-				local r2 = getRoot()
-				if did and r2 then pcall(tp, r2, home) end
-				setAfkPaused(false)
-			end
+		if State.Collect then
+			local home = (State.Afk and safeCFrame) or root.CFrame
+			local hasWork = next(named) ~= nil or next(autoSet) ~= nil
+			if hasWork and State.Afk then setAfkPaused(true) end
+			local did = collectSet(named, false)
+			if not did then did = collectSet(autoSet, true) end
+			local r2 = getRoot()
+			if did and r2 then pcall(tp, r2, home) end
+			setAfkPaused(false)
+		end
 
-			-- tetap di platform saat AFK (tidak saat pause)
-			if State.Afk and safeCFrame and not afkPaused then
-				local r3 = getRoot()
-				if r3 and (r3.Position - safeCFrame.Position).Magnitude > 8 then
-					pcall(tp, r3, safeCFrame)
-				end
+		if State.Afk and safeCFrame and not afkPaused then
+			local r3 = getRoot()
+			if r3 and (r3.Position - safeCFrame.Position).Magnitude > 8 then
+				pcall(tp, r3, safeCFrame)
 			end
 		end
+	end
 end
 
 task.spawn(function()
@@ -496,4 +576,4 @@ env.__EvadeFarm = {
 	end,
 }
 
-log("jalan. Tunggu Wisp/Ticket muncul di map.")
+log("sistem siap. menunggu target.")
