@@ -1,7 +1,6 @@
 -- ==================================================
 -- [SECURITY] GAME GUARD - EXCLUSIVE FOR EVADE
 -- ==================================================
-local StarterGui = game:GetService("StarterGui")
 local isEvade = false
 
 -- 1. Cek berdasarkan Nama Game (Fallback)
@@ -22,16 +21,9 @@ for _, id in ipairs(ALLOWED_PLACE_IDS) do
     end
 end
 
--- 3. Jika bukan Evade, matikan script secara total
+-- 3. Jika bukan Evade, matikan script secara total (SILENT KILL)
 if not isEvade then
-    pcall(function()
-        StarterGui:SetCore("SendNotification", {
-            Title = "Security System",
-            Text = "Script ini hanya berfungsi di Evade!",
-            Duration = 5
-        })
-    end)
-    return -- HENTIKAN SCRIPT (UI tidak akan muncul)
+    return -- HENTIKAN SCRIPT TANPA NOTIFIKASI
 end
 -- ==================================================
 
